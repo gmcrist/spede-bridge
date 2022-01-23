@@ -1,0 +1,34 @@
+/**   spede/ios_base
+ *    %W%   %G%
+ *    Basic IO System for C++ .. parent to ostream and istream
+ */
+
+#ifndef _INCL_SPEDE_IOS_BASE
+#define _INCL_SPEDE_IOS_BASE
+
+
+/* --------------------------------------------------------------- */
+
+
+class ios_base {
+    protected :
+	int	mybase;	// Current output numerical base.
+
+    public :
+	virtual ~ ios_base(void);
+
+	virtual int	setbase( int newbase ) = 0;
+
+	friend ios_base &  hex( ios_base& s );
+	friend ios_base &  dec( ios_base& s );
+	friend ios_base &  two( ios_base& s );
+
+};   /* end class ios_base() */
+
+
+// Change base of stream (either input or output):
+extern ios_base &  hex( ios_base& s );
+extern ios_base &  dec( ios_base& s );
+extern ios_base &  two( ios_base& s );
+
+#endif

@@ -1,0 +1,72 @@
+/**  spede/ostream.h
+ *	%W%   %G%
+ *	output streams, ala C++
+ *	Full description: ISO C++ 14882: 27.6.2  Output streams
+ */
+
+#ifndef __cplusplus
+# error "This file for C++ only !!"
+#endif
+
+#ifndef _INCL_SPEDE_IOSTREAM
+#define _INCL_SPEDE_IOSTREAM
+
+#include <spede/stdio.h>		/* For printf() */
+
+#include <spede/ios_base>
+
+
+/* --------------------------------------------------------------- */
+
+
+
+class ostream : public ios_base
+{
+private :
+	int	myfd;
+	ostream(void);	// no implementation.
+	int 	(*myformatoutput)(const char *, ...);
+	void 	(*mycharoutput)(int);
+
+public :
+    enum { HOST_OUTPUT = 1, TARGET_OUTPUT = 10 };
+    ostream( int fd );
+    virtual ~ ostream(void);
+
+    //
+    //  Operators upon the stream.  The last function applies it.
+    //
+    ostream & flush( ostream& s );
+
+    virtual setbase( int new_output_base );
+
+    inline ostream & operator<< ( ostream& (*f)(ostream&) ) {
+	return f(*this);
+    }
+
+    //
+    //  Miscallenous Operations
+    //
+    ostream & endl(void);
+
+    //
+    //  Formatted Value Output (INSERTORS) :
+    //
+    ostream & operator<< (const char * str);
+    ostream & operator<< (void * pval);
+
+#if SW_IOSTREAM_LONG_LONG
+    ostream & operator<< (long long llval);
+#endif
+
+    ostream & operator<< (long lval);
+    ostream & operator<< (int ival);
+    ostream & operator<< (unsigned uval);
+    ostream & operator<< (unsigned char cval);
+    ostream & operator<< (char cval);
+
+    ostream & put(char cval);
+    ostream & write(const char * p, streamsize n);	// p[0] .. p[n-1]
+};
+
+#endif

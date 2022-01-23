@@ -1,0 +1,37 @@
+/*	spede/include/iostream
+ *	%W%   %G5
+ *	C++ istream/ostream including file.
+ */
+
+#ifndef __cplusplus
+# error "This file for C++ only !!"
+#endif
+
+#ifndef _INCL_INCLUDE_IOSTREAM
+#define _INCL_INCLUDE_IOSTREAM
+
+/*
+ * 	Set zero/non-zero to exclude/include long-long support (64 bit)
+ */
+#define SW_IOSTREAM_LONG_LONG	0
+
+
+#include <spede/istream>
+#include <spede/ostream>
+
+//  G++ 2.7.2.3 is "mostly broken" WRT namespaces
+// namespace std {
+	//  HOST INPUT-OUTPUT
+    extern istream	cin;
+    extern ostream	cout;
+    extern ostream 	cerr;
+    extern ostream 	clog;
+    
+    	// TARGET INPUT-OUTPUT
+    extern istream	consin;
+    extern ostream	consout;
+
+// };	// end namespace std
+
+#endif
+

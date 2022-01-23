@@ -1,0 +1,237 @@
+#!/bin/bash
+# A linker front-end script.  Ensures image located at correct place.
+# The -v option shows the shell commands, and prints the image size.
+# Default to locate code at $101080.
+# Default output name is "MyOS.elf"
+# If mapfile request, its name is still "mapfile".
+# The caller might want to rename it immediately after linking.
+#
+# Script can be used to link a user-space application. The origin is
+# at 2G+ (0x80000020).  There is an a.out header (32 bytes) or an
+# an ELF header (128 bytes) in front.
+# Images must be self contained.  There is no runtime library, yet.
+
+spede_root=${SPEDE_ROOT:-/opt/spede}
+
+typeset -A link_defaults
+link_defaults=(
+    [gcc]="${spede_root}/bin/i386-elf-gcc"
+    [ld]="${spede_root}/bin/i386-elf-ld"
+    [size]="${spede_root}/bin/i386-elf-size"
+
+    [lib_dir]="${spede_root}/lib"
+    [gcc_lib]=""
+
+    [debug]=0
+    [mapfile]=0
+    [strip]=0
+    [startup]=0
+    [userapp]=1
+    [verbose]=0
+
+    [outfile]="kernel.elf"
+    [base]="1M"
+)
+
+typeset -A link_config
+for i in ${link_defaults[*]}; do
+    link_config[${i}]=${link_defaults[${i}]}
+done
+
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 [options].. -o image object..."
+    echo "   -g         = Prep output for GDB debugger."
+    echo "   -M         = Generate mapfile."
+    echo "   -o image   = Specifiy output filename."
+    echo "   -b {256k|1m|4m} = Base address 256K, 1MB or 4MB."
+    echo "   -S         = strip debugging symbols"
+    echo "   -userapp   = Link for user-space application"
+    echo "   -nostartfiles = Don't link default startup code."
+    echo "   -v         = Display progress info."
+    exit 1
+fi
+
+# ----------------------------------------------------------------
+
+#LIB_DIR=/gaia/home/project/spede2/Target-i386/i686/gnu/i386-unknown-gnu/lib
+#GCC_LIB=$(/usr/cross/bin/i386-elf-gcc --print-libgcc-file-name)
+#LD_BIN=/usr/cross/bin/i386-elf-ld
+#SIZE_BIN=/usr/cross/bin/i386-elf-size
+
+LIB_DIR=${spede_root}/lib
+GCC_LIB=$(${spede_root}/bin/i386-elf-gcc --print-libgcc-file-name)
+LD_BIN=${spede_root}/bin/i386-elf-ld
+SIZE_BIN=${spede_root}/bin/i386-elf-size
+
+# ----------------------------------------------------------------
+# Start with these defaults.  Cmdline options can modify them.
+# LD knows where the default library directory is.
+#
+# options = warn about multiple variable definitions, display
+#           only first reference for each unresolved symbol.
+debug_flags=
+extra_flags=
+extra_objects=
+
+startup_objects="${LIB_DIR}/crt0.o ${LIB_DIR}/ctors.o"
+finish_objects="${LIB_DIR}/finish.o"
+outputfile=MyOS.dli
+
+objects=
+post_mesg=
+options="-warn-common -warn-once"
+
+user_app=NO
+show_exec_size=NO
+mapfile=
+
+base=1m
+code_start="-d -Ttext 0x101080"
+
+# support.o pulls in bzero() and _lomem_heap_alloc(), so it must be
+# before "libi386.a".  Since support.o is object and not library, it
+# will be linked with the application every time.
+crt_library="${LIB_DIR}/support.o -li386"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        "-v")
+            extra_flags="--verbose"
+            show_exec_size=YES
+            ;;
+
+        "-M")
+            mapfile="-Map mapfile"
+            ;;
+
+        "-g")
+            if [ "$user_app" = "YES" ]; then
+                echo "ERROR: Can't set debug info for user applications"
+                exit 2
+            fi
+
+            startup_objects="${LIB_DIR}/gdb0.o ${LIB_DIR}/ctors.o"
+            extra_objects="${LIB_DIR}/i386-stub.o"
+            debug_flags="${debug_flags} -g"
+            post_mesg=" (with GDB enabled)"
+            ;;
+
+        "-o")
+            outputfile="$2"
+            shift
+            ;;
+
+        -nosta*)
+            startup_objects=""
+            finish_objects=""
+            ;;
+
+        -us*)
+            #  User-space application org at 2G.
+            base="2G"
+
+            user_app=YES
+            startup_objects=""
+            finish_objects=""
+            extra_objects=""
+            crt_library=""
+
+            #  "-s" = strip executable of all symbols.
+            #  For now, don't link any C runtime library.
+            #   Sometime we'll have an OS-independent C-RTL...
+            debug_flags="-s"
+            GCC_LIB=""
+
+            #  These create a-out executable:
+            ## extra_flags="-oformat a.out-i386 ${extra_flags}"
+            ## post_mesg="user-space appl (a.out)"
+            ## code_start="-dN -Ttext 0x80000020"
+
+            #  These create ELF executable:
+            post_mesg="user-space appl (ELF)"
+            code_start="-d -Ttext 0x80000080"
+            ;;
+
+        "-b")
+            #  If the base address isn't 1M, then skip only the ELF
+            #  header (128 bytes), and not the SBBB header.
+
+            if [ "$2" = '4m' ]; then
+                code_start="-d -Ttext  0x400080"
+            elif [ "$2" = '16m' ]; then
+                code_start="-d -Ttext 0x1000080"
+            elif [ "$2" = '256k' ]; then
+                code_start="-d -Ttext   0x40080"
+            elif [ "$2" = '1m' ]; then
+                code_start="-d -Ttext  0x101080"
+            else
+                echo "ERROR: don't understand base $2"
+                exit 2
+            fi
+
+            base="$2"
+            shift
+            ;;
+
+        -S)
+            options="${options} $1"
+            ;;
+
+        -*)
+            # We don't recognize it, but perhaps the linker
+            # does.  Pass it on as an option.
+            echo "Warning: $1 not recognized by linker script"
+            options="${options} $1"
+            ;;
+
+        *)
+            objects="${objects} $1"
+            ;;
+
+    esac
+    shift
+done
+
+if [ -z "${outputfile}" -o -z "${objects}" ]; then
+    echo "ERROR: Must specify a destination and at least one object file."
+    exit 2
+fi
+
+#    For binutils, 2.7
+#    -Map mapfile  -->  store map file
+#    -N  -->  writable TEXT segment NOT demand paged.
+#         Do not page align data.
+#    -t  -->  provides trace of library searching progress.
+#
+${LD_BIN} \
+    -L ${LIB_DIR} \
+    ${debug_flags} \
+    ${extra_flags} \
+    ${options} \
+    ${code_start} \
+    $mapfile \
+    -o $outputfile \
+    ${startup_objects} \
+    ${objects} \
+    ${extra_objects} \
+    ${GCC_LIB} \
+    ${crt_library} \
+    ${finish_objects}
+
+if [ $? -ne 0 ] ; then
+    echo '---- ERROR IN LINKING!'
+    exit  2
+fi
+
+#
+# --------------------------------------------------
+#
+
+if [ "$show_exec_size" = "YES" ]; then
+    ${SIZE_BIN} $outputfile
+fi
+
+# This line is very important.  For some reason, a non-zero return code
+# was exposed.  If run in a script, an error exit results.  "echo" is
+# wonderfully benign.
+echo Done linking \"$outputfile\" $post_mesg at ${base}.

@@ -1,0 +1,50 @@
+/**  spede/istream
+ *	%W%   %G%
+ *	input streams, ala C++
+ */
+
+#ifndef _INCL_ISTREAM_H
+#define _INCL_ISTREAM_H
+
+#include <spede/ios_base>
+
+/* --------------------------------------------------------------- */
+
+typedef unsigned	streamsize;
+
+class istream : public  ios_base {
+private :
+	enum { _BUFFER_SIZE = 203 };
+	int	myfd;
+	char	mybuffer[ _BUFFER_SIZE+1 ];
+	char *	myinp;			// current index
+	char *  myendp;			// Where the input ends.
+
+	istream(void);		// not implemented.
+
+	int     _getmore(void);
+
+public :
+    istream( int fd );
+    ~ istream(void);
+
+    //
+    //  Operators upon the stream.  The last function applies it.
+    //
+    istream & flush( istream& s );
+
+    inline istream & operator>> ( istream& (*f)(istream&) ) {
+	return f(*this);
+    }
+
+    virtual int   setbase(int);
+
+    istream& operator>>(int & ival);
+    istream& get(char & cval);	// One char.
+    istream& getline(char * sval, streamsize max);	// At most max-1
+
+//    istream& read(char * sval, streamsize max);		// At most max
+};
+
+
+#endif
