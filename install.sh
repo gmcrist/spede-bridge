@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 spede_root=${SPEDE_ROOT:-/opt/spede}
 
-typeset -A install_dirs
+declare -A install_dirs
 install_dirs=(
     [bin]="bin/linkdli"
     [lib]="lib/gdb0.o lib/ctors.o lib/i386-stub.o lib/support.o lib/finish.o lib/libi386.a"
