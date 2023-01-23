@@ -18,13 +18,19 @@ function main() {
 
         echo "Creating directory '${dir}'..."
         install -d ${dest} || return $?
+        echo ${dest}
 
         for file in ${install_dirs[${dir}]}; do
-            echo "Copying '${file}' to '${dest}'..."
-
             if [ -d ${file} ]; then
-                install -d ${file} ${dest} || return $?
+                echo "Copying directory '${file}' to '${dest}'"
+
+                find ${file} -type d -exec echo "{}" \; -exec install -d "{}" ${spede_root}/"{}" \;
+                find ${file} -type f -exec echo "{}" \; -exec install "{}" ${spede_root}/"{}" \;
+
+#                (cd ${file} && find . -type d -exec echo "{}" \; -exec install -d "{}" ${dest}/"{}" \;)
+#                (cd ${file} && find . -type f -exec echo "{}" \; -exec install "{}" ${dest}/"{}" \;)
             else
+                echo "Copying '${file}' to '${dest}'..."
                 install ${file} ${dest} || return $?
             fi
         done

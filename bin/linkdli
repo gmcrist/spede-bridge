@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # A linker front-end script.  Ensures image located at correct place.
 # The -v option shows the shell commands, and prints the image size.
 # Default to locate code at $101080.
@@ -13,7 +13,7 @@
 
 spede_root=${SPEDE_ROOT:-/opt/spede}
 
-typeset -A link_defaults
+declare -A link_defaults
 link_defaults=(
     [gcc]="${spede_root}/bin/i386-elf-gcc"
     [ld]="${spede_root}/bin/i386-elf-ld"
@@ -33,7 +33,7 @@ link_defaults=(
     [base]="1M"
 )
 
-typeset -A link_config
+declare -A link_config
 for i in ${link_defaults[*]}; do
     link_config[${i}]=${link_defaults[${i}]}
 done
