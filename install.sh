@@ -24,11 +24,8 @@ function main() {
             if [ -d ${file} ]; then
                 echo "Copying directory '${file}' to '${dest}'"
 
-                find ${file} -type d -exec echo "{}" \; -exec install -d "{}" ${spede_root}/"{}" \;
-                find ${file} -type f -exec echo "{}" \; -exec install "{}" ${spede_root}/"{}" \;
-
-#                (cd ${file} && find . -type d -exec echo "{}" \; -exec install -d "{}" ${dest}/"{}" \;)
-#                (cd ${file} && find . -type f -exec echo "{}" \; -exec install "{}" ${dest}/"{}" \;)
+                find ${file} -type d -exec install -d "{}" ${spede_root}/"{}" \;
+                find ${file} -type f -exec install "{}" ${spede_root}/"{}" \;
             else
                 echo "Copying '${file}' to '${dest}'..."
                 install ${file} ${dest} || return $?
